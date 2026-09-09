@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#b71c1c"/>
+<link rel="manifest" href="manifest.webmanifest">
+<title>Brandweer DHC Geoefendheid</title>
+<style>
+:root{--bg:#f5f6f7;--card:#fff;--text:#1e2429;--muted:#66717b;--red:#b71c1c;--red2:#8e1111;--green:#168447;--amber:#c98700;--blue:#1177bb;--line:#dfe3e6;--shadow:0 8px 24px rgba(0,0,0,.08)}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)} 
+header{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,var(--red2),var(--red));color:#fff;padding:14px 18px;box-shadow:0 3px 12px rgba(0,0,0,.2)}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px} .logo{width:38px;height:38px;border-radius:50%;background:#fff;color:var(--red);display:grid;place-items:center;font-size:22px}
+nav{display:flex;gap:6px;overflow:auto;padding-top:10px} nav button{border:0;background:rgba(255,255,255,.14);color:white;padding:9px 12px;border-radius:10px;font-weight:700;white-space:nowrap} nav button.active{background:#fff;color:var(--red)}
+main{max-width:1200px;margin:auto;padding:18px} .view{display:none} .view.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px} .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.stat{font-size:30px;font-weight:850;margin-top:4px} .muted{color:var(--muted)} h1,h2,h3{margin:0 0 12px} 
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:750;cursor:pointer;background:#e9edf0;color:#222} .btn.primary{background:var(--red);color:#fff} .btn.good{background:var(--green);color:#fff} .btn.warn{background:var(--amber);color:#fff} .btn.danger{background:#c62828;color:#fff} .btn:disabled{opacity:.45}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0} input,select,textarea{width:100%;border:1px solid #cdd3d7;border-radius:10px;padding:11px;background:#fff;font:inherit} label{font-weight:700;font-size:14px;display:block;margin:10px 0 5px}
+table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:14px} th{background:#f0f2f4;position:sticky;top:111px;z-index:3}
+.badge{display:inline-block;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:800} .kritisch{background:#fff1a8;color:#725700} .korps{background:#edf1f4;color:#37444d} .nvt{background:#bfe8ff;color:#045984}
+.status-ok{color:var(--green);font-weight:800} .status-bad{color:#c62828;font-weight:800} .teamcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.person{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)} .role-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:12px 0 6px}
+.checkrow{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--line);border-radius:10px;margin:6px 0;background:#fff} .checkrow input{width:auto}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px} .modal.open{display:flex} .modalbox{background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:16px}
+canvas{border:1px solid #aaa;border-radius:10px;width:100%;height:220px;touch-action:none;background:#fff} .sig{max-width:180px;max-height:54px;border:1px solid #ddd;background:#fff;border-radius:6px}
+.notice{padding:12px;border-left:4px solid var(--amber);background:#fff8df;border-radius:8px;margin:12px 0} .small{font-size:12px} .right{text-align:right}
+@media(max-width:650px){th{top:110px} main{padding:12px} .hide-mobile{display:none}}
+@media print{header,.no-print{display:none!important} body{background:#fff} main{max-width:none} .card{box-shadow:none}}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand"><div class="logo">🔥</div><div>Brandweer DHC · Geoefendheid</div></div>
+ <nav id="nav">
+  <button data-view="dashboard" class="active">Dashboard</button>
+  <button data-view="new">Nieuwe oefening</button>
+  <button data-view="active">Actief</button>
+  <button data-view="overview">Overzicht</button>
+  <button data-view="cards">Oefenkaarten</button>
+  <button data-view="people">Personeel</button>
+  <button data-view="archive">Archief</button>
+ </nav>
+</header>
+<main>
+<section id="dashboard" class="view active">
+ <h1>Dashboard</h1>
+ <div class="grid" id="stats"></div>
+ <div class="card" style="margin-top:14px"><h2>Kritische oefenkaarten</h2><div id="criticalSummary"></div></div>
+</section>
+
+<section id="new" class="view">
+ <h1>Nieuwe oefening</h1>
+ <div class="card">
+  <div class="grid">
+   <div><label>Oefenkaarten</label>
+<div style="display:flex;gap:7px;flex-wrap:wrap">
+ <input id="cardQuick" list="cardQuickList" placeholder="Typ bijv. 102C..." autocomplete="off" oninput="syncCardQuick()" style="flex:1;min-width:170px">
+ <button class="btn primary" type="button" onclick="addSelectedCard()">Toevoegen</button>
+</div>
+<datalist id="cardQuickList"></datalist>
+<select id="cardSelect" style="margin-top:7px" onchange="syncCardSelect()"></select>
+<div id="selectedCards" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px"></div>
+<div class="muted small" style="margin-top:5px">Je kunt meerdere oefenkaarten aan dezelfde oefening toevoegen.</div>
+</div>
+   <div><label>Datum</label><input id="date" type="date"></div>
+   <div><label>Begintijd</label><input id="startTime" type="time"></div>
+   <div><label>Eindtijd</label><input id="endTime" type="time"><div class="muted small" style="margin-top:5px">Mag bij het starten leeg blijven; je kunt hem bij de actieve oefening invullen.</div></div>
+   <div><label>Locatie</label><input id="location" placeholder="Bijv. oefenplaat / gebouw"></div>
+   <div><label>Oefenleider</label>
+<input id="leaderQuick" list="leaderQuickList" placeholder="Typ naam..." autocomplete="off" oninput="syncLeaderQuick()">
+<datalist id="leaderQuickList"></datalist>
+<select id="leader" style="margin-top:7px" onchange="syncLeaderSelect()"></select>
+<div class="muted small" style="margin-top:5px">Typ een naam voor een snelle keuze.</div>
+</div>
+  </div>
+  <label>Opmerking / doel</label><textarea id="notes" rows="2"></textarea>
+  <div class="toolbar">
+   <button class="btn" onclick="selectTeam('A')">Selecteer ploeg A</button>
+   <button class="btn" onclick="selectTeam('B')">Selecteer ploeg B</button>
+   <button class="btn" onclick="selectTeam('C')">Selecteer ploeg C</button>
+   <button class="btn" onclick="clearParticipants()">Wis selectie</button>
+  </div>
+  <div class="card" style="box-shadow:none;margin:10px 0;background:#fafafa">
+   <label>Snel persoon toevoegen</label>
+   <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <input id="quickPerson" list="quickPeopleList" placeholder="Typ een naam..." autocomplete="off" style="flex:1;min-width:220px">
+    <datalist id="quickPeopleList"></datalist>
+    <button class="btn primary" type="button" onclick="quickAddPerson()">Toevoegen</button>
+   </div>
+   <div class="muted small" style="margin-top:6px">Tijdens het typen krijg je direct namen uit ploeg A, B en C als snelkeuze.</div>
+  </div>
+  <div id="participantPicker" class="teamcols"></div>
+  <div class="toolbar"><button class="btn primary" onclick="startExercise()">Oefening starten</button></div>
+ </div>
+</section>
+
+<section id="active" class="view">
+ <h1>Actieve oefeningen</h1>
+ <div id="activeList"></div>
+</section>
+
+
+<section id="overview" class="view">
+ <h1>Wie heeft welke oefenkaart gedaan?</h1>
+ <div class="card">
+  <div class="grid">
+   <div><label>Oefenkaart</label><select id="overviewCard" onchange="renderOverview()"></select></div>
+   <div><label>Ploeg</label><select id="overviewTeam" onchange="renderOverview()"><option value="">Alle ploegen</option><option value="A">Ploeg A</option><option value="B">Ploeg B</option><option value="C">Ploeg C</option></select></div>
+   <div><label>Zoek medewerker</label><input id="overviewSearch" placeholder="Typ een naam..." oninput="renderOverview()"></div>
+  </div>
+ </div>
+ <div id="overviewResult" style="margin-top:14px"></div>
+</section>
+
+<section id="cards" class="view">
+ <h1>Oefenkaarten</h1>
+ <div class="toolbar"><input id="cardSearch" placeholder="Zoek oefenkaart..." oninput="renderCards()" style="max-width:320px"><select id="typeFilter" onchange="renderCards()" style="max-width:220px"><option value="">Alle typen</option><option>kritisch</option><option>korps</option><option>nvt</option></select></div>
+ <div class="card" style="overflow:auto"><table><thead><tr><th>Kaart</th><th>Aantal</th><th>Norm</th><th>Type</th><th>Persoonsdoel</th></tr></thead><tbody id="cardsBody"></tbody></table></div>
+</section>
+
+<section id="people" class="view">
+ <h1>Personeel</h1>
+ <div class="card">
+  <h2>Persoon toevoegen</h2>
+  <div class="grid">
+   <div><label>Naam</label><input id="newPersonName" placeholder="Voor- en achternaam"></div>
+   <div><label>Ploeg</label><select id="newPersonTeam"><option value="A">Ploeg A</option><option value="B">Ploeg B</option><option value="C">Ploeg C</option></select></div>
+   <div><label>Vaste functie</label><select id="newPersonRole"><option value="Manschap">Manschap</option><option value="Bevelvoerder">Bevelvoerder</option></select></div>
+  </div>
+  <div class="toolbar"><button class="btn primary" type="button" onclick="addPerson()">Toevoegen aan ploeg</button></div>
+  <div class="muted small">Alleen iemand die hier als Bevelvoerder staat, kan tijdens een oefening als bevelvoerder worden geselecteerd.</div>
+ </div>
+ <div class="toolbar"><select id="teamFilter" onchange="renderPeople()" style="max-width:200px"><option value="">Alle ploegen</option><option>A</option><option>B</option><option>C</option></select><input id="personSearch" oninput="renderPeople()" placeholder="Zoek naam..." style="max-width:300px"></div>
+ <div id="peopleList" class="teamcols"></div>
+</section>
+
+<section id="archive" class="view">
+ <h1>Archief</h1>
+ <div class="toolbar no-print"><button class="btn" onclick="exportCSV()">Exporteer CSV</button></div>
+ <div id="archiveList"></div>
+</section>
+</main>
+
+<div id="sigModal" class="modal"><div class="modalbox">
+ <h2 id="sigTitle">Handtekening</h2>
+ <canvas id="sigCanvas" width="900" height="300"></canvas>
+ <div class="toolbar"><button class="btn" onclick="clearSig()">Wissen</button><button class="btn good" onclick="saveSig()">Opslaan</button><button class="btn" onclick="closeSig()">Annuleren</button></div>
+</div></div>
+
+<script>
+const TEAMS = {"A": {"bevelvoerders": ["Jesse vd Wal", "Mitch Kaunang", "Niek Hoosemans", "Martijn Goossens", "Levaronne Lourens", "Kasper Kalee"], "manschappen": ["Giuliano Melis", "Jilles vd Burg", "Reinier Blotenburg", "Luuk de Kivit", "Patrick Bosman", "Mike Kunst", "Calvin Brown", "Niels Bosman", "Bas Janssen", "Sebastiaan Muller", "Yannick van Dijk", "Maarten Rust", "Connor Hagenaars"]}, "B": {"bevelvoerders": ["Johan Steenbakkers", "Fabian van Heerde", "Richard van Galen", "Bram Zwart", "Martin Ooms", "Quincy van Room"], "manschappen": ["Aart het Lam", "Joel Kos", "Mike Wezenberg", "Maarten Verster", "Wouter Genet", "Dave Balk", "Randy Heideman", "Pleun van Alphen", "Joffrey Post", "Nathan Alblas", "Jordi Lopez Lopez", "Joel Bal", "Mike de Waal"]}, "C": {"bevelvoerders": ["Koen Trommelen", "Marvin van der Sloot", "Tom Krzeszewski", "Bram Bertrams", "Kevin Jonker", "Ruben van de Plas"], "manschappen": ["Robin Dogterom", "Boyd Kootstra", "Ismaël van Dijke", "Thijs van Bussel", "Krijn Buijing", "Edgar Zondervan", "Iris Cornelissen", "Ruben van der Linden", "Mark van de Kooij", "Emiel Los", "Koen Janssens", "Denzel van Hattem", "Elisa van Wieren"]}};
+const CARDS = [{"code": "101A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "101B", "aantal": 6, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "102A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "102B", "aantal": 15, "norm": 3, "type": "kritisch", "targetPerPerson": 1}, {"code": "102C", "aantal": 77, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "102D", "aantal": 77, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "102E", "aantal": 2, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "103A", "aantal": 2, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "103B", "aantal": 2, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "103C", "aantal": 6, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "103D", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "111A", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "111B", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "112A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "112B", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "113A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "113B", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "113C", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "121A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "121B", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "122A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "123A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "201A", "aantal": 6, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "202A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "202B", "aantal": 6, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "202C", "aantal": 9, "norm": 3, "type": "kritisch", "targetPerPerson": 1}, {"code": "202D", "aantal": 77, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "202E", "aantal": 77, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "202F", "aantal": 2, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "211A", "aantal": 16, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "212A", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "212B", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "221A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "222A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "222B", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "301A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "302A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "302B", "aantal": 6, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "302C", "aantal": 3, "norm": 3, "type": "kritisch", "targetPerPerson": 1}, {"code": "302D", "aantal": 77, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "302E", "aantal": 77, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "302F", "aantal": 2, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "311A", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "312A", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "312B", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "321A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "322A", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "322B", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "401A", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "401B", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "401C", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "401D", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "402A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "402B", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "402C", "aantal": 2, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "402D", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "402E", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "402F", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "402G", "aantal": 14, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "451A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "451B", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "451C", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "451D", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "451E", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "451F", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "451G", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "461A", "aantal": 3, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "461B", "aantal": 3, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "461C", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "462A", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "462B", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "463A", "aantal": 3, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "463B", "aantal": 3, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "463C", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "464A", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "464B", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "464C", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "464D", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "465A", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "465B", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "465C", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "465D", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "501", "aantal": 0, "norm": 0.5, "type": "korps", "targetPerPerson": 1}, {"code": "502", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "503", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "504", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "505", "aantal": 6, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "511", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "512", "aantal": 6, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "521", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "522", "aantal": 8, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "531", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "602", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "603", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "604", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "605", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "611", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "612", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "614", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "615", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "616", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "617", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "700", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "710", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "730", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1141A", "aantal": 10, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1141B", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1142A", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1142B", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1142C", "aantal": 20, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1142D", "aantal": 20, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1143A", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143B", "aantal": 0, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143C", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143D", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1143E", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143F", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143G", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143H", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1143I", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1143J", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1143K", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143L", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143M", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143N", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143O", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143P", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1143Q", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "1144A", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1145A", "aantal": 0, "norm": 3, "type": "kritisch", "targetPerPerson": 1}, {"code": "1146A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1146B", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1146C", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1241A", "aantal": 10, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1242A", "aantal": 10, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1242B", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1243A", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243B", "aantal": 0, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243C", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243D", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1243E", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243F", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243G", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243H", "aantal": 0, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243I", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1243J", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1243K", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243L", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243M", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243N", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243O", "aantal": 6, "norm": 3, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243P", "aantal": 6, "norm": 3, "type": "kritisch", "targetPerPerson": 1}, {"code": "1243Q", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "1244A", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1245A", "aantal": 0, "norm": 3, "type": "kritisch", "targetPerPerson": 1}, {"code": "1246A", "aantal": 3, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1246B", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1246C", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1341A", "aantal": 10, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1342A", "aantal": 10, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1342B", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1343A", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343B", "aantal": 0, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343C", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343D", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1343E", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343F", "aantal": 3, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343G", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343H", "aantal": 0, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343I", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1343J", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1343K", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343L", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343M", "aantal": 0, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343N", "aantal": 3, "norm": 0, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343O", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343P", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1343Q", "aantal": 0, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "1344A", "aantal": 6, "norm": 1, "type": "kritisch", "targetPerPerson": 1}, {"code": "1345A", "aantal": 0, "norm": 2, "type": "kritisch", "targetPerPerson": 1}, {"code": "1345B", "aantal": 0, "norm": 0.5, "type": "kritisch", "targetPerPerson": 1}, {"code": "1346A", "aantal": 3, "norm": 0, "type": "korps", "targetPerPerson": 1}, {"code": "1541", "aantal": 0, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1542", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1641", "aantal": 12, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1642", "aantal": 9, "norm": 1, "type": "korps", "targetPerPerson": 1}, {"code": "1741", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}, {"code": "1841", "aantal": 0, "norm": 0, "type": "nvt", "targetPerPerson": 0}];
+const LSKEY='dhc_geoefendheid_v1';
+let state = JSON.parse(localStorage.getItem(LSKEY)||'null') || {active:[],archive:[],progress:{},cycle:{name:'Huidige cyclus'}};
+state.customPeople = state.customPeople || [];
+let sigTarget=null, drawing=false, ctx=null, selectedExerciseCards=[];
+
+function allPeople(){
+ const a=[];
+ Object.entries(TEAMS).forEach(([team,g])=>{
+   g.bevelvoerders.forEach(name=>a.push({name,team,role:'Bevelvoerder',source:'roster'}));
+   g.manschappen.forEach(name=>a.push({name,team,role:'Manschap',source:'roster'}));
+ });
+ (state.customPeople||[]).filter(p=>p.active!==false).forEach(p=>a.push({...p,source:'custom'}));
+ return a.sort((x,y)=>x.name.localeCompare(y.name,'nl'));
+}
+function save(){localStorage.setItem(LSKEY,JSON.stringify(state)); renderAll();}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function cardsOf(e){return (e.cards&&e.cards.length)?e.cards:(e.card?[e.card]:[]);}
+function cardsLabel(e){return cardsOf(e).join(', ');}
+
+function navTo(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ const view=b.dataset.view;
+ navTo(view);
+ if(view==='new'){
+   clearParticipants();
+   const qp=document.getElementById('quickPerson'); if(qp) qp.value='';
+ }
+});
+
+function initNew(){
+ const cs=document.getElementById('cardSelect'); cs.innerHTML=CARDS.filter(c=>c.type!=='nvt').map(c=>`<option value="${c.code}">${c.code} · ${c.type} · norm ${c.norm}</option>`).join('');
+ const cql=document.getElementById('cardQuickList');
+ if(cql) cql.innerHTML=CARDS.filter(c=>c.type!=='nvt').map(c=>`<option value="${c.code}">${c.type==='kritisch'?'KRITISCH · ':''}norm ${c.norm}</option>`).join('');
+ const cq=document.getElementById('cardQuick'); if(cq) cq.value=''; selectedExerciseCards=[]; renderSelectedCards();
+ const ocs=document.getElementById('overviewCard'); if(ocs) ocs.innerHTML=CARDS.filter(c=>c.type!=='nvt').map(c=>`<option value="${c.code}">${c.code}${c.type==='kritisch'?' · kritisch':''}</option>`).join('');
+ const ppl=allPeople(); document.getElementById('leader').innerHTML='<option value="">Kies oefenleider...</option>'+ppl.map(p=>`<option>${esc(p.name)}</option>`).join('')+'<option value="__external">Externe oefenleider</option>';
+ const lql=document.getElementById('leaderQuickList');
+ if(lql) lql.innerHTML=ppl.map(p=>`<option value="${esc(p.name)}">Ploeg ${p.team} · ${p.role}</option>`).join('');
+
+ document.getElementById('quickPeopleList').innerHTML=ppl.map(p=>`<option value="${esc(p.name)}">Ploeg ${p.team} · ${p.role}</option>`).join('');
+ document.getElementById('date').valueAsDate=new Date();
+ const now=new Date(), hh=String(now.getHours()).padStart(2,'0'), mm=String(now.getMinutes()).padStart(2,'0');
+ document.getElementById('startTime').value=hh+':'+mm;
+ document.getElementById('endTime').value='';
+ document.getElementById('participantPicker').innerHTML=['A','B','C'].map(t=>{
+   const tp=allPeople().filter(p=>p.team===t);
+   const b=tp.filter(p=>p.role==='Bevelvoerder');
+   const m=tp.filter(p=>p.role!=='Bevelvoerder');
+   return `<div class="card"><h3>Ploeg ${t}</h3><div class="role-title">Bevelvoerders</div>${b.map(p=>pick(p.name,t,'Bevelvoerder')).join('')}<div class="role-title">Manschappen</div>${m.map(p=>pick(p.name,t,'Manschap')).join('')}</div>`;
+ }).join('');
+ // Bij een nieuwe oefening is standaard niemand geselecteerd.
+ document.querySelectorAll('.participant').forEach(x=>x.checked=false);
+}
+function pick(n,t,r){
+ const options=r==='Bevelvoerder'
+   ? '<option value="Bevelvoerder">Bevelvoerder</option><option value="Chauffeur">Chauffeur</option><option value="Manschap">Manschap</option>'
+   : '<option value="Manschap">Manschap</option><option value="Chauffeur">Chauffeur</option>';
+ return `<div class="checkrow" style="display:grid;grid-template-columns:auto 1fr minmax(125px,170px);gap:10px;align-items:center">
+   <input type="checkbox" class="participant" data-name="${esc(n)}" data-team="${t}" data-base-role="${r}">
+   <span>${esc(n)} <span class="muted small">· ${r}</span></span>
+   <select class="exercise-role" data-name="${esc(n)}" aria-label="Functie tijdens oefening">${options}</select>
+ </div>`;
+}
+function selectTeam(t){document.querySelectorAll('.participant').forEach(x=>{if(x.dataset.team===t)x.checked=true;})}
+function clearParticipants(){document.querySelectorAll('.participant').forEach(x=>x.checked=false)}
+function quickAddPerson(){
+ const input=document.getElementById('quickPerson'), q=input.value.trim().toLowerCase();
+ if(!q)return;
+ const matches=[...document.querySelectorAll('.participant')].filter(x=>x.dataset.name.toLowerCase()===q);
+ if(!matches.length){ alert('Naam niet gevonden. Kies een naam uit de snelkeuze.'); return; }
+ matches[0].checked=true; matches[0].closest('.checkrow').scrollIntoView({behavior:'smooth',block:'center'});
+ input.value=''; input.focus();
+}
+
+function syncLeaderQuick(){
+ const input=document.getElementById('leaderQuick'), sel=document.getElementById('leader');
+ const q=(input.value||'').trim().toLowerCase();
+ const person=allPeople().find(p=>p.name.toLowerCase()===q);
+ if(person) sel.value=person.name;
+}
+function syncLeaderSelect(){
+ const sel=document.getElementById('leader'), input=document.getElementById('leaderQuick');
+ if(input) input.value=sel.value==='__external'?'':sel.value;
+}
+function syncCardQuick(){
+ const input=document.getElementById('cardQuick'), sel=document.getElementById('cardSelect');
+ const q=input.value.trim().toUpperCase();
+ const exact=CARDS.find(c=>c.type!=='nvt' && c.code.toUpperCase()===q);
+ if(exact) sel.value=exact.code;
+}
+function syncCardSelect(){
+ const sel=document.getElementById('cardSelect'), input=document.getElementById('cardQuick');
+ if(input) input.value=sel.value;
+}
+function renderSelectedCards(){
+ const el=document.getElementById('selectedCards'); if(!el)return;
+ if(!selectedExerciseCards.length){
+   el.innerHTML='<span class="muted small">Nog geen oefenkaarten geselecteerd.</span>';
+   return;
+ }
+ el.innerHTML=selectedExerciseCards.map(code=>{
+   const c=CARDS.find(x=>x.code===code);
+   return `<span class="badge ${c?.type||'korps'}" style="font-size:14px;padding:8px 10px">${code}${c?.type==='kritisch'?' · kritisch':''} <button type="button" onclick="removeSelectedCard('${code}')" style="border:0;background:transparent;font-weight:900;font-size:16px;cursor:pointer;margin-left:5px">×</button></span>`;
+ }).join('');
+}
+function addSelectedCard(){
+ const input=document.getElementById('cardQuick'), sel=document.getElementById('cardSelect');
+ let code=(input.value||'').trim().toUpperCase();
+ const exact=CARDS.find(c=>c.type!=='nvt' && c.code.toUpperCase()===code);
+ if(exact) code=exact.code; else code=sel.value;
+ if(!code)return;
+ if(!selectedExerciseCards.includes(code)) selectedExerciseCards.push(code);
+ renderSelectedCards();
+ input.value=''; input.focus();
+}
+function removeSelectedCard(code){
+ selectedExerciseCards=selectedExerciseCards.filter(x=>x!==code);
+ renderSelectedCards();
+}
+function startExercise(){
+ let leader=document.getElementById('leader').value; if(!leader) return alert('Kies eerst een oefenleider.');
+ if(leader==='__external'){leader=prompt('Naam externe oefenleider:')||''; if(!leader)return;}
+ const checked=[...document.querySelectorAll('.participant:checked')];
+ if(!checked.length)return alert('Selecteer minimaal één deelnemer.');
+ const parts=checked.map(x=>{
+   const roleEl=[...document.querySelectorAll('.exercise-role')].find(r=>r.dataset.name===x.dataset.name);
+   const exerciseRole=roleEl?.value||'Manschap';
+   const baseRole=x.dataset.baseRole||'Manschap';
+   return {name:x.dataset.name,team:x.dataset.team,baseRole,role:exerciseRole,signature:null};
+ });
+ if(!selectedExerciseCards.length)return alert('Selecteer minimaal één oefenkaart.');
+ const cards=[...selectedExerciseCards];
+ const startTime=document.getElementById('startTime').value;
+ const endTime=document.getElementById('endTime').value;
+ if(!startTime)return alert('Vul de begintijd in.');
+ state.active.push({id:Date.now(),cards,card:cards[0],date:document.getElementById('date').value,startTime,endTime,location:document.getElementById('location').value,leader,leaderSignature:null,notes:document.getElementById('notes').value,participants:parts,startedAt:new Date().toISOString()});
+ document.getElementById('notes').value=''; document.getElementById('location').value=''; document.getElementById('endTime').value='';
+ const n2=new Date(); document.getElementById('startTime').value=String(n2.getHours()).padStart(2,'0')+':'+String(n2.getMinutes()).padStart(2,'0');
+ selectedExerciseCards=[]; renderSelectedCards(); clearParticipants(); save(); navTo('active');
+}
+function renderActive(){
+ const el=document.getElementById('activeList');
+ if(!state.active.length){el.innerHTML='<div class="card muted">Geen actieve oefeningen.</div>';return;}
+ el.innerHTML=state.active.map(e=>`<div class="card" style="margin-bottom:14px">
+  <div class="grid"><div><h2>${cardsLabel(e)}</h2><div class="muted">${esc(e.date)} · ${esc(e.location||'Geen locatie')}<br>Begintijd: <b>${esc(e.startTime||'—')}</b> · Eindtijd: <b>${esc(e.endTime||'nog niet ingevuld')}</b></div></div><div><b>Oefenleider</b><br>${esc(e.leader)} ${e.leaderSignature?'<span class="status-ok">✓ getekend</span>':'<span class="status-bad">niet getekend</span>'}</div></div>
+  ${e.notes?`<p>${esc(e.notes)}</p>`:''}
+  <div class="toolbar">
+   <label style="margin:0;display:flex;align-items:center;gap:8px">Eindtijd <input type="time" value="${esc(e.endTime||'')}" onchange="setExerciseEndTime(${e.id},this.value)" style="width:auto"></label>
+   <button class="btn" onclick="openSig(${e.id},'leader')">Handtekening oefenleider</button>
+   <button class="btn good" onclick="closeExercise(${e.id})">Oefening afsluiten</button>
+  </div>
+  <h3>Deelnemers</h3>
+  <div>${e.participants.map((p,i)=>`<div class="person"><div><b>${esc(p.name)}</b><div class="muted small">Ploeg ${p.team} · ${p.role}</div></div><div>${p.signature?'<span class="status-ok">✓ getekend</span>':'<button class="btn" onclick="openSig('+e.id+',\'participant\','+i+')">Tekenen</button>'}</div></div>`).join('')}</div>
+ </div>`).join('');
+}
+function openSig(id,type,index=null){sigTarget={id,type,index}; const e=state.active.find(x=>x.id===id); document.getElementById('sigTitle').textContent=type==='leader'?'Handtekening oefenleider: '+e.leader:'Handtekening: '+e.participants[index].name; document.getElementById('sigModal').classList.add('open'); clearSig();}
+function closeSig(){document.getElementById('sigModal').classList.remove('open');sigTarget=null;}
+function clearSig(){const c=document.getElementById('sigCanvas');ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.lineWidth=3;ctx.lineCap='round';ctx.strokeStyle='#111';}
+function saveSig(){if(!sigTarget)return; const data=document.getElementById('sigCanvas').toDataURL('image/png'); const e=state.active.find(x=>x.id===sigTarget.id); if(sigTarget.type==='leader')e.leaderSignature=data; else e.participants[sigTarget.index].signature=data; closeSig(); save();}
+const can=document.getElementById('sigCanvas');
+function pos(ev){const r=can.getBoundingClientRect(),p=ev.touches?ev.touches[0]:ev;return {x:(p.clientX-r.left)*(can.width/r.width),y:(p.clientY-r.top)*(can.height/r.height)}}
+function down(ev){drawing=true;const p=pos(ev);ctx.beginPath();ctx.moveTo(p.x,p.y);ev.preventDefault()} function move(ev){if(!drawing)return;const p=pos(ev);ctx.lineTo(p.x,p.y);ctx.stroke();ev.preventDefault()} function up(){drawing=false}
+['mousedown','touchstart'].forEach(x=>can.addEventListener(x,down));['mousemove','touchmove'].forEach(x=>can.addEventListener(x,move));['mouseup','mouseleave','touchend'].forEach(x=>can.addEventListener(x,up));
+
+function setExerciseEndTime(id,value){
+ const e=state.active.find(x=>x.id===id); if(!e)return;
+ e.endTime=value; save();
+}
+function closeExercise(id){
+ const e=state.active.find(x=>x.id===id); if(!e)return;
+ if(!e.startTime)return alert('Begintijd ontbreekt.');
+ if(!e.endTime)return alert('Vul eerst de eindtijd van de oefening in.');
+ const missing=e.participants.filter(p=>!p.signature); if(missing.length)return alert('Nog niet iedereen heeft getekend: '+missing.map(x=>x.name).join(', '));
+ if(!e.leaderSignature)return alert('De oefenleider moet nog tekenen.');
+ if(!confirm('Oefening '+cardsLabel(e)+' definitief afsluiten?'))return;
+ e.closedAt=new Date().toISOString(); e.participants.forEach(p=>{state.progress[p.name]??={}; cardsOf(e).forEach(code=>{state.progress[p.name][code]=(state.progress[p.name][code]||0)+1;});});
+ state.archive.unshift(e); state.active=state.active.filter(x=>x.id!==id); save();
+}
+function renderCards(){
+ const q=(document.getElementById('cardSearch')?.value||'').toLowerCase(), t=document.getElementById('typeFilter')?.value||'';
+ document.getElementById('cardsBody').innerHTML=CARDS.filter(c=>(!q||c.code.toLowerCase().includes(q))&&(!t||c.type===t)).map(c=>`<tr><td><b>${c.code}</b></td><td>${c.aantal}</td><td>${c.norm}</td><td><span class="badge ${c.type}">${c.type}</span></td><td>${c.targetPerPerson||'—'}</td></tr>`).join('');
+}
+function personCompletion(name){
+ const relevant=CARDS.filter(c=>c.type!=='nvt'&&c.targetPerPerson>0), p=state.progress[name]||{};
+ const done=relevant.filter(c=>(p[c.code]||0)>=c.targetPerPerson).length, crit=CARDS.filter(c=>c.type==='kritisch'&&c.targetPerPerson>0), critMiss=crit.filter(c=>(p[c.code]||0)<c.targetPerPerson).length;
+ return {done,total:relevant.length,critMiss};
+}
+function exerciseHistoryFor(name,code){
+ return state.archive.filter(e=>cardsOf(e).includes(code) && e.participants.some(p=>p.name===name))
+   .map(e=>{const pr=e.participants.find(p=>p.name===name);return {date:e.date,leader:e.leader,location:e.location||'',role:pr?.role||'',startTime:e.startTime||'',endTime:e.endTime||''}})
+   .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+}
+function renderOverview(){
+ const code=document.getElementById('overviewCard')?.value;
+ if(!code)return;
+ const team=document.getElementById('overviewTeam')?.value||'';
+ const q=(document.getElementById('overviewSearch')?.value||'').toLowerCase();
+ const card=CARDS.find(c=>c.code===code);
+ const people=allPeople().filter(p=>(!team||p.team===team)&&(!q||p.name.toLowerCase().includes(q)));
+ const done=people.filter(p=>exerciseHistoryFor(p.name,code).length>0);
+ const notdone=people.filter(p=>exerciseHistoryFor(p.name,code).length===0);
+ const personRow=(p,yes)=>{
+   const hist=exerciseHistoryFor(p.name,code), last=hist[0];
+   return `<div class="person"><div><b>${esc(p.name)}</b><div class="muted small">Ploeg ${p.team} · vaste functie: ${p.role}${last?' · laatste: '+esc(last.date)+' · gedraaid als '+esc(last.role||'—'):''}</div></div><div>${yes?'<span class="status-ok">✓ Gedaan</span>':'<span class="status-bad">Nog niet gedaan</span>'}</div></div>`;
+ };
+ document.getElementById('overviewResult').innerHTML=`
+ <div class="grid">
+  <div class="card"><div class="muted">Oefenkaart</div><div class="stat">${code}</div><div><span class="badge ${card.type}">${card.type}</span></div></div>
+  <div class="card"><div class="muted">Gedaan</div><div class="stat">${done.length}</div></div>
+  <div class="card"><div class="muted">Nog niet gedaan</div><div class="stat">${notdone.length}</div></div>
+ </div>
+ <div class="teamcols" style="margin-top:14px">
+  <div class="card"><h2>✓ Gedaan</h2>${done.length?done.map(p=>personRow(p,true)).join(''):'<div class="muted">Nog niemand.</div>'}</div>
+  <div class="card"><h2>Nog niet gedaan</h2>${notdone.length?notdone.map(p=>personRow(p,false)).join(''):'<div class="status-ok">Iedereen heeft deze kaart gedaan.</div>'}</div>
+ </div>`;
+}
+function addPerson(){
+ const name=document.getElementById('newPersonName').value.trim();
+ const team=document.getElementById('newPersonTeam').value;
+ const role=document.getElementById('newPersonRole').value;
+ if(!name)return alert('Vul een naam in.');
+ if(allPeople().some(p=>p.name.toLowerCase()===name.toLowerCase()))return alert('Deze persoon staat al in de lijst.');
+ state.customPeople.push({id:'p'+Date.now(),name,team,role,active:true});
+ document.getElementById('newPersonName').value='';
+ save();
+ initNew();
+ alert(name+' is toegevoegd aan ploeg '+team+'.');
+}
+
+function renderPeople(){
+ const q=(document.getElementById('personSearch')?.value||'').toLowerCase(), tf=document.getElementById('teamFilter')?.value||'';
+ const arr=allPeople().filter(p=>(!tf||p.team===tf)&&(!q||p.name.toLowerCase().includes(q)));
+ document.getElementById('peopleList').innerHTML=arr.map(p=>{
+   const history=state.archive.filter(e=>e.participants.some(x=>x.name===p.name)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+   const unique=[...new Set(history.flatMap(e=>cardsOf(e)))];
+   const last=history[0];
+   return `<div class="card"><h3>${esc(p.name)}${p.source==='custom'?' <span class="badge">toegevoegd</span>':''}</h3><div class="muted">Ploeg ${p.team} · ${p.role}</div><p><b>${unique.length}</b> verschillende oefenkaarten gedaan</p>${last?`<p class="small">Laatste: <b>${cardsLabel(last)}</b> op ${esc(last.date)}</p>`:'<p class="muted small">Nog geen afgesloten oefening geregistreerd.</p>'}<button class="btn" onclick="showPerson('${esc(p.name).replace(/'/g,"\\'")}')">Bekijk oefenkaarten</button></div>`
+ }).join('');
+}
+function showPerson(name){
+ const history=state.archive.filter(e=>e.participants.some(p=>p.name===name)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ if(!history.length){alert(name+'\n\nNog geen oefenkaarten geregistreerd.');return;}
+ const grouped={}; history.forEach(e=>cardsOf(e).forEach(code=>{
+   const pr=e.participants.find(p=>p.name===name);
+   (grouped[code]??=[]).push({date:e.date,role:pr?.role||'—'});
+ }));
+ const rows=Object.entries(grouped).map(([code,items])=>code+' — '+items.length+'x — laatste '+items[0].date+' als '+items[0].role).join('\n');
+ alert(name+'\n\nGedane oefenkaarten:\n'+rows);
+}
+function renderArchive(){
+ const el=document.getElementById('archiveList'); if(!(state.archive||[]).length){el.innerHTML='<div class="card muted">Nog geen afgesloten oefeningen.</div>';return;}
+ el.innerHTML=state.archive.map(e=>`<div class="card" style="margin-bottom:12px"><div class="grid"><div><h3>${cardsLabel(e)}</h3><div>${esc(e.date)} · ${esc(e.location||'Geen locatie')}<br><span class="muted small">${esc(e.startTime||'—')} – ${esc(e.endTime||'—')}</span></div></div><div><b>Oefenleider:</b> ${esc(e.leader)}<br><b>Deelnemers:</b> ${e.participants.length}</div></div><details><summary>Bekijk deelnemers en handtekeningen</summary>${e.participants.map(p=>`<div class="person"><span>${esc(p.name)} · Ploeg ${p.team} · ${p.role}</span>${p.signature?`<img class="sig" src="${p.signature}">`:''}</div>`).join('')}<p><b>Handtekening oefenleider</b></p>${e.leaderSignature?`<img class="sig" src="${e.leaderSignature}">`:''}</details><div class="toolbar no-print"><button class="btn" onclick="printRecord(${e.id})">Print / PDF</button><button class="btn danger" onclick="deleteArchive(${e.id})">Verwijderen</button></div></div>`).join('');
+}
+function deleteArchive(id){
+ const e=state.archive.find(x=>x.id===id); if(!e)return;
+ if(!confirm('Weet je zeker dat je oefening '+cardsLabel(e)+' van '+e.date+' uit het archief wilt verwijderen?'))return;
+ // Trek de eerder toegevoegde geoefendheid weer af, zodat dashboard en persoonsdossier blijven kloppen.
+ e.participants.forEach(p=>{
+   cardsOf(e).forEach(code=>{
+     if(state.progress[p.name] && state.progress[p.name][code]){
+       state.progress[p.name][code]=Math.max(0,state.progress[p.name][code]-1);
+       if(state.progress[p.name][code]===0) delete state.progress[p.name][code];
+     }
+   });
+ });
+ state.archive=state.archive.filter(x=>x.id!==id);
+ save();
+}
+function printRecord(id){const e=state.archive.find(x=>x.id===id); if(!e)return; const w=window.open('','_blank'); w.document.write(`<html><head><title>Oefenregistratie ${cardsLabel(e)}</title><style>body{font-family:Arial;padding:30px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:8px}img{max-height:70px;max-width:220px}</style></head><body><h1>Brandweer DHC - Oefenregistratie</h1><p><b>Oefenkaarten:</b> ${cardsLabel(e)}<br><b>Datum:</b> ${e.date}<br><b>Begintijd:</b> ${esc(e.startTime||'—')}<br><b>Eindtijd:</b> ${esc(e.endTime||'—')}<br><b>Locatie:</b> ${esc(e.location||'')}<br><b>Oefenleider:</b> ${esc(e.leader)}</p><table><tr><th>Naam</th><th>Ploeg</th><th>Functie tijdens oefening</th><th>Handtekening</th></tr>${e.participants.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.team}</td><td>${p.role}</td><td><img src="${p.signature}"></td></tr>`).join('')}</table><h3>Oefenleider</h3><img src="${e.leaderSignature}"><p>${esc(e.notes||'')}</p><script>setTimeout(()=>window.print(),300)<\/script></body></html>`); w.document.close();}
+function exportCSV(){let rows=[['Datum','Begintijd','Eindtijd','Oefenkaart','Locatie','Oefenleider','Naam','Ploeg','Functie']];state.archive.forEach(e=>e.participants.forEach(p=>cardsOf(e).forEach(code=>rows.push([e.date,e.startTime||'',e.endTime||'',code,e.location,e.leader,p.name,p.team,p.role]))));const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\n');const b=new Blob([csv],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='dhc_oefenregistratie.csv';a.click();URL.revokeObjectURL(u);}
+function renderDashboard(){
+ const ppl=allPeople(), crit=CARDS.filter(c=>c.type==='kritisch'&&c.targetPerPerson>0), misses=ppl.reduce((n,p)=>n+crit.filter(c=>((state.progress[p.name]||{})[c.code]||0)<c.targetPerPerson).length,0);
+ const regs=state.archive.reduce((n,e)=>n+e.participants.length,0);
+ document.getElementById('stats').innerHTML=`<div class="card"><div class="muted">Actieve oefeningen</div><div class="stat">${state.active.length}</div></div><div class="card"><div class="muted">Afgesloten oefeningen</div><div class="stat">${(state.archive||[]).length}</div></div><div class="card"><div class="muted">Medewerkers</div><div class="stat">${ppl.length}</div></div><div class="card"><div class="muted">Deelnames geregistreerd</div><div class="stat">${regs}</div></div>`;
+ document.getElementById('criticalSummary').innerHTML=Object.keys(TEAMS).map(t=>{const pp=ppl.filter(p=>p.team===t), m=pp.reduce((n,p)=>n+personCompletion(p.name).critMiss,0);return `<div class="person"><b>Ploeg ${t}</b><span class="${m?'status-bad':'status-ok'}">${m?m+' registraties ontbreken':'op orde ✓'}</span></div>`}).join('');
+}
+function renderAll(){renderDashboard();renderActive();renderOverview();renderCards();renderPeople();renderArchive();}
+initNew(); clearSig(); renderAll();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body></html>
